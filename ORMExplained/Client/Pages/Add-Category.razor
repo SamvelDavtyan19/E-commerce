@@ -1,0 +1,113 @@
+﻿@* Page route declaration *@
+@page "/add-category"
+
+@* Injecting category service *@
+@inject ICategoryService categoryService
+
+<div class="row">
+    <div class="col-md-8 offset-3">
+        <div class="card">
+            <div class="card-header">
+                <span class="oi oi-plus"></span> Add Category <!-- Header for adding category -->
+            </div>
+            <div class="card-body">
+                <EditForm Model="@newCategory" OnValidSubmit="HandleAddCategory">
+                    <DataAnnotationsValidator></DataAnnotationsValidator>
+                    <ValidationSummary class="form-control p-3"></ValidationSummary>
+                    <div class="form-group mt-2">
+                        <div class="alert alert-@CssClass">@Message</div>
+                    </div>
+                    <div class="form-group mt-2">
+                        <label class="form-label" for="title">Name</label>
+                        <InputText id="title" @bind-Value="newCategory.Name" class="form-control"></InputText>
+                        <ValidationMessage For="@(()=> newCategory.Name)"></ValidationMessage>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mt-2">
+                                <img src="@newCategory.Image" class="card-image-top" style="width:150px; height:100px" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mt-2">
+                                <label class="form-label" for="image">Image</label>&nbsp; <span class="text-danger fw-bold">@uploadMessage</span>
+                                <InputFile id="image" OnChange="OnFileChange" class="form-control"></InputFile>
+                                <ValidationMessage For="@(()=> newCategory.Image)"></ValidationMessage>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group mt-2">
+                        <button type="submit" class="btn btn-primary float-end"> <i class="oi oi-plus"></i> Create</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Creating new category instance
+    public Category newCategory = new Category();
+
+    // Message for file upload status
+    private string? uploadMessage;
+
+    // Message for category creation status
+    private string? Message = string.Empty;
+
+    // CSS class for styling message
+    private string? CssClass = string.Empty;
+
+    // Method to handle category addition
+    async Task HandleAddCategory()
+    {
+        // Reset message
+        Message = "";
+
+        // Add category using service
+        var response = await categoryService.AddCategory(newCategory);
+
+        // Update message from response
+        Message = response!.Message;
+
+        // Update CSS class from response
+        CssClass = response!.CssClass;
+    }
+
+    // Method to handle file change
+    async Task OnFileChange(InputFileChangeEventArgs e)
+    {
+        // Get file info
+        FileInfo fileInfo = new FileInfo(e.File.Name);
+
+        // Check if file is JPG
+        if (fileInfo.Extension.ToLower().Contains(".jpg"))
+        {
+            // Reset upload message
+            uploadMessage = "";
+
+            // Set image format
+            var format = "image/jpg";
+
+            // Resize image
+            var resizeImage = await e.File.RequestImageFileAsync(format, 300, 300);
+
+            // Create buffer
+            var buffer = new byte[resizeImage.Size];
+
+            // Read image data
+            await resizeImage.OpenReadStream().ReadAsync(buffer);
+
+            // Convert image data to base64
+            var imageData = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+
+            // Update category image
+            newCategory.Image = imageData;
+        }
+        else
+        {
+            // Set error message for invalid file type
+            uploadMessage = "Invalid file selected (only JPG file)";
+        }
+    }
+}

@@ -1,0 +1,109 @@
+﻿@page "/productDetails/{id:int}" // Page route declaration
+
+@inject IProductServices productService // Injecting product service
+@inject ICartService cartService // Injecting cart service
+
+@if (serviceModel.Single != null)
+{
+    <div class="row">
+        <div class="row sticky-top mb-1">
+            <div class="col-md-12 mt-1"><h3 class="text-muted" style="font-family:'Javanese Text'">Product</h3></div>
+        </div>
+        <hr />
+        <div class="col-md-6 offset-3">
+            <div class="card border-1 m-2 mb-2">
+                <div class="form-group mt-2">
+                    <div class="alert alert-@CssClass">@Message</div>
+                </div>
+                <div class="card-header text-center">
+                    <img class="card-img-top" src="@serviceModel.Single.Image" style="width:300px; height:200px" />
+                    @if (DateTime.Now < serviceModel.Single.UploadedDate.AddDays(30))
+                    {
+                        <span class="badge bg-info position-absolute top-0 start-100 translate-middle badge rounded-pill">New</span>
+                    }
+                </div>
+                <div class="card-body">
+                    <p>
+                        <span class="text-primary">@serviceModel.Single.Name </span>&nbsp; &nbsp; <!-- Display product name -->
+                        <br />
+                        <span class="text-secondary text-muted fs-6">@serviceModel.Single.Description</span><br> <!-- Display product description -->
+                        @if (serviceModel.Single.NewPrice != 0 && serviceModel.Single.NewPrice < serviceModel.Single.OriginalPrice)
+                        {
+                            <span class="text-danger text-decoration-line-through" style="font-size:16px;"><i>$@serviceModel.Single.OriginalPrice</i></span> <!-- Display original price -->
+                            <span>&nbsp; &nbsp;</span>
+                            <span class="badge bg-primary badge rounded-end bg-danger">Reduced</span> <!-- Badge for reduced price -->
+                            <br />
+                            <span class="text-primary text-center" style="font-size:16px;"><i>$@serviceModel.Single.NewPrice</i></span> <!-- Display new price -->
+                        }
+                        else
+                        {
+                            <span class="text-danger" style="font-size:16px;"><i>$@serviceModel.Single.OriginalPrice</i></span> <!-- Display original price -->
+                        }
+                        <h6 class="text-muted">In Stock: @serviceModel.Single.Quantity</h6>
+                        <input type="number" @bind="Quantity" min="1" class="form-control w-25"></input> <!-- Input for quantity -->
+                    </p>
+
+                </div>
+                <div class="card-footer bg-white">
+                    <button class="btn btn-outline-danger btn-sm" @onclick="async ()=> await AddProductToCart(serviceModel.Single.Id)">
+                        <i class="oi oi-cart fs-5"></i> <!-- Button to add product to cart -->
+                        Add to cart
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6 offset-3 mb-5">
+                <div class="d-flex justify-content-center mt-5">
+                    <div class="spinner-border text-danger" role="status" style="width: 5rem; height: 5rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; } // Parameter for product ID
+    private int Quantity = 1; // Quantity of product to add to cart
+    private string? Message = string.Empty; // Message for user feedback
+    private string? CssClass = string.Empty; // CSS class for styling message
+    public ServiceModel<Product> serviceModel = new ServiceModel<Product>(); // Service model for product
+
+    // Method to fetch product details based on ID
+    protected override async Task OnParametersSetAsync() => await GetProducts();
+
+    // Method to get product details from the service
+    private async Task GetProducts() => serviceModel = await productService.GetProduct(Id);
+
+    // Method to add product to cart
+    private async Task AddProductToCart(int productId)
+    {
+        Message = "";
+        CssClass = "";
+        if (Quantity >= 1 && Quantity <= serviceModel.Single!.Quantity)
+        {
+            // Create cart model with product ID and quantity
+            var myCartModel = new MyCartModel
+                {
+                    ProductId = productId,
+                    UserQuantity = Quantity
+                };
+            // Add product to cart
+            await cartService.AddToCart(myCartModel);
+
+        }
+        else
+        {
+            // Invalid quantity provided
+            Message = "Invalid quantity provided";
+            CssClass = "warning";
+        }
+    }
+}

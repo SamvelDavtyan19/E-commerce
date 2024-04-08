@@ -1,0 +1,87 @@
+﻿@page "/" // Page route declaration
+@page "/{url}" // Additional page route for category-based filtering
+@inject IProductServices productService // Injecting product service
+
+@if (serviceModel.List != null) // Check if products exist
+{
+    <div class="row">
+        <div class="row sticky-top mb-1">
+            <div class="col-md-8 mt-1"><h3 class="text-muted" style="font-family:'Javanese Text'">Products</h3></div>
+        </div>
+        <hr />
+
+        @foreach (var product in serviceModel.List) // Iterate through products
+        {
+            <div class="col-md-3">
+                <div class="card border-1 m-2 mb-2">
+                    <a href="productDetails/@product.Id" style="text-decoration:none;">
+                        <div class="card-header text-center bg-white">
+                            <img class="card-img-top" src="@product.Image" style="width:200px; height:150px" />
+                            @if (DateTime.Now < product.UploadedDate.AddDays(30)) // Display badge for new products
+                            {
+                                <span class="badge bg-info position-absolute top-0 start-100 translate-middle badge rounded-pill">New</span>
+                            }
+                        </div>
+                        <div class="card-body">
+                            <p>
+                                <span class="text-primary">@product.Name </span>&nbsp; &nbsp; <!-- Display product name -->
+                                <br />
+                                <span class="text-secondary text-muted fs-6">@product.Description</span><br> <!-- Display product description -->
+                                @if (product.NewPrice != 0 && product.NewPrice < product.OriginalPrice) // Check if product has reduced price
+                                {
+                                    <span class="text-danger text-decoration-line-through" style="font-size:16px;"><i>$@product.OriginalPrice</i></span> <!-- Display original price -->
+                                    <span>&nbsp; &nbsp;</span>
+                                    <span class="badge bg-primary badge rounded-end bg-danger">Reduced</span> <!-- Badge for reduced price -->
+                                    <br />
+                                    <span class="text-primary text-center" style="font-size:16px;"><i>$@product.NewPrice</i></span> <!-- Display new price -->
+                                }
+                                else
+                                {
+                                    <span class="text-danger" style="font-size:16px;"><i>$@product.OriginalPrice</i></span> <!-- Display original price -->
+                                }
+                            </p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6 offset-3 mb-5">
+                <div class="d-flex justify-content-center mt-5">
+                    <div class="spinner-border text-danger" role="status" style="width: 5rem; height: 5rem;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string Url { get; set; } = string.Empty; // Parameter for category URL
+    public ServiceModel<Product> serviceModel = new ServiceModel<Product>(); // Service model for products
+
+    // Method to initialize the component
+    protected override async Task OnInitializedAsync()
+    {
+        serviceModel = await productService.GetProducts(); // Fetch all products
+    }
+
+    // Method to fetch products based on category URL
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Url != null) // Check if URL parameter exists
+        {
+            serviceModel = await productService.GetProductsByCategory(Url); // Fetch products by category
+        }
+        else
+        {
+            serviceModel = await productService.GetProducts(); // Fetch all products
+        }
+    }
+}

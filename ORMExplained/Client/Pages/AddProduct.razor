@@ -1,0 +1,136 @@
+﻿@page "/addProduct" // Page route declaration
+
+<div class="row">
+    <div class="col-md-6 offset-3">
+        <h3>Add Product</h3>
+
+        <EditForm Model="@newProduct" OnValidSubmit="HandleAddProduct">
+            <!-- Form for adding product -->
+            <DataAnnotationsValidator></DataAnnotationsValidator>
+            <ValidationSummary class="form-control p-3"></ValidationSummary>
+            <div class="form-group mt-2">
+                <div class="alert alert-@CssClass">@Message</div>
+            </div>
+            <div class="form-group mt-2">
+                <label class="form-label" for="title">Name</label>
+                <InputText id="title" @bind-Value="newProduct.Name" class="form-control"></InputText> <!-- Input field for product name -->
+                <ValidationMessage For="@(()=> newProduct.Name)"></ValidationMessage>
+            </div>
+            <div class="form-group mt-2">
+                <label class="form-label">Select Category</label>
+                <InputSelect @bind-Value="newProduct.CategoryId" class=" form-select mb-3">
+                    <!-- Dropdown for selecting category -->
+                    <option>Select Category</option>
+                    @foreach (var cat in Categories!)
+                    {
+                        <option value="@cat.Id">@cat.Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(()=> newProduct.CategoryId)"></ValidationMessage>
+            </div>
+            <div class="form-group mt-2">
+                <label class="form-label" for="url">Original Price</label>
+                <input type="text" id="price" min="0.5" @bind="newProduct.OriginalPrice" class="form-control"></input> <!-- Input field for original price -->
+                <ValidationMessage For="@(()=> newProduct.OriginalPrice)"></ValidationMessage>
+            </div>
+            <div class="form-group mt-2">
+                <label class="form-label" for="url">New Price</label>
+                <input type="text" id="price" min="0.5" @bind="newProduct.NewPrice" class="form-control"></input> <!-- Input field for new price -->
+                <ValidationMessage For="@(()=> newProduct.NewPrice)"></ValidationMessage>
+            </div>
+            <div class="form-group mt-2">
+                <label class="form-label" for="description">Description</label>
+                <InputTextArea id="description" @bind-Value="newProduct.Description" class="form-control"></InputTextArea> <!-- Input field for description -->
+                <ValidationMessage For="@(()=> newProduct.Description)"></ValidationMessage>
+            </div>
+            <div class="form-group mt-2">
+                <label class="form-label" for="description">Quantity</label>
+                <input type="number" id="description" min="1" @bind="newProduct.Quantity" class="form-control"></input> <!-- Input field for quantity -->
+                <ValidationMessage For="@(()=> newProduct.Quantity)"></ValidationMessage>
+            </div>
+            <div class="form-group mt-2">
+                <label class="form-label" for="image">Image</label>&nbsp; <span class="text-danger fw-bold">@uploadMessage</span>
+                <InputFile id="image" OnChange="OnFileChange" class="form-control"></InputFile> <!-- Input for selecting image -->
+                <ValidationMessage For="@(()=> newProduct.Image)"></ValidationMessage>
+            </div>
+            <div class="form-check mt-2">
+                <button type="submit" class="btn btn-primary"> <i class="oi oi-plus"></i> Create</button> <!-- Button to submit form -->
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    // Creating new product instance
+    public Product newProduct = new Product();
+
+    // List of categories
+    public List<Category> Categories { get; set; } = new List<Category>();
+
+    // Message for file upload status
+    private string? uploadMessage;
+
+    // Message for product creation status
+    private string? Message = string.Empty;
+
+    // CSS class for styling message
+    private string? CssClass = string.Empty;
+
+    // Fetch categories on initialization
+    protected override async Task OnInitializedAsync()
+    => Categories = (await categoryService.GetCategories()).List!;
+
+    // Method to handle product addition
+    async Task HandleAddProduct()
+    {
+        // Reset message
+        Message = "";
+
+        // Add product using service
+        var response = await productService.AddProduct(newProduct);
+
+        // Update message from response
+        Message = response!.Message;
+
+        // Update CSS class from response
+        CssClass = response!.CssClass;
+    }
+
+    // Method to handle file change
+    async Task OnFileChange(InputFileChangeEventArgs e)
+    {
+        // Get file info
+        FileInfo fileInfo = new FileInfo(e.File.Name);
+
+        // Check if file is JPG
+        if (fileInfo.Extension.ToLower().Contains(".jpg"))
+        {
+            // Reset upload message
+            uploadMessage = "";
+
+            // Set image format
+            var format = "image/jpg";
+
+            // Resize image
+            var resizeImage = await e.File.RequestImageFileAsync(format, 300, 300);
+
+            // Create buffer
+            var buffer = new byte[resizeImage.Size];
+
+            // Read image data
+            await resizeImage.OpenReadStream().ReadAsync(buffer);
+
+            // Convert image data to base64
+            var imageData = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+
+            // Update product image
+            newProduct.Image = imageData;
+        }
+        else
+        {
+            // Set error message for invalid file type
+            uploadMessage = "Invalid file selected (only JPG file)";
+        }
+    }
+}
+```

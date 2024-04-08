@@ -1,0 +1,121 @@
+﻿@page "/update-product/{id:int}"
+@using ORMExplained.Shared.DTO;
+@using ORMExplained.Shared.Models;
+@inject IProductServices productService // Injecting product service
+
+<div class="row">
+    <div class="col-md-6 offset-3">
+        <h3>Update Product</h3>
+
+        <EditForm Model="@newProduct" OnValidSubmit="HandleUpdateProduct">
+            <DataAnnotationsValidator></DataAnnotationsValidator>
+            <ValidationSummary class="form-control p-3"></ValidationSummary>
+            <div class="form-group mt-2">
+                <div class="alert alert-@CssClass">@Message</div>
+            </div>
+            <div class="form-group mt-2">
+                <label class="form-label" for="title">Name</label>
+                <InputText id="title" @bind-Value="newProduct.Name" class="form-control"></InputText>
+                <ValidationMessage For="@(()=> newProduct.Name)"></ValidationMessage>
+            </div>
+            <div class="form-group mt-2">
+                <label class="form-label">Select Category</label>
+                <InputSelect @bind-Value="newProduct.CategoryId" class=" form-select mb-3">
+                    <option>Select Category</option>
+                    @foreach (var cat in Categories!)
+                    {
+                        <option value="@cat.Id">@cat.Name</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(()=> newProduct.CategoryId)"></ValidationMessage>
+            </div>
+            <div class="form-group mt-2">
+                <label class="form-label" for="originalPrice">Original Price</label>
+                <input type="number" id="originalPrice" min="0.5" @bind="newProduct.OriginalPrice" class="form-control"></input>
+                <ValidationMessage For="@(()=> newProduct.OriginalPrice)"></ValidationMessage>
+            </div>
+            <div class="form-group mt-2">
+                <label class="form-label" for="newPrice">New Price</label>
+                <input type="number" id="newPrice" min="0.5" @bind="newProduct.NewPrice" class="form-control"></input>
+                <ValidationMessage For="@(()=> newProduct.NewPrice)"></ValidationMessage>
+            </div>
+            <div class="form-group mt-2">
+                <label class="form-label" for="description">Description</label>
+                <InputTextArea id="description" @bind-Value="newProduct.Description" class="form-control"></InputTextArea>
+                <ValidationMessage For="@(()=> newProduct.Description)"></ValidationMessage>
+            </div>
+            <div class="form-group mt-2">
+                <label class="form-label" for="quantity">Quantity</label>
+                <input type="number" id="quantity" min="1" @bind="newProduct.Quantity" class="form-control"></input>
+                <ValidationMessage For="@(()=> newProduct.Quantity)"></ValidationMessage>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <img src="@newProduct.Image" class="card-img-top" style="width: 150px; height:100px;" />
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group mt-2">
+                        <label class="form-label" for="image">Image</label>&nbsp; <span class="text-danger fw-bold">@uploadMessage</span>
+                        <InputFile id="image" OnChange="OnFileChange" class="form-control"></InputFile>
+                        <ValidationMessage For="@(()=> newProduct.Image)"></ValidationMessage>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group mt-2">
+                <button type="submit" class="btn btn-primary float-end"> <i class="oi oi-arrow-circle-top"></i> Update</button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+
+@code {
+    [Parameter] public int Id { get; set; } // Parameter for product ID
+    public Product newProduct = new Product(); // Product model for update
+    private string? uploadMessage; // Message for file upload
+    private string? Message = string.Empty; // General message
+    private string? CssClass = string.Empty; // CSS class for message
+    public List<Category> Categories { get; set; } = new List<Category>(); // List of categories
+
+    // Method to fetch categories and initialize component
+    protected override async Task OnInitializedAsync() => Categories = (await categoryService.GetCategories()).List!;
+
+    // Method to handle product update
+    async Task HandleUpdateProduct()
+    {
+        Message = "";
+        var response = await productService.UpdateProduct(newProduct); // Update product via service
+        Message = response!.Message; // Set response message
+        CssClass = response!.CssClass; // Set response CSS class
+    }
+
+    // Method to handle file change during image upload
+    async Task OnFileChange(InputFileChangeEventArgs e)
+    {
+        FileInfo fileInfo = new FileInfo(e.File.Name);
+        if (fileInfo.Extension.ToLower().Contains(".jpg")) // Check if file is JPG
+        {
+            uploadMessage = "";
+            var format = "image/jpg";
+            var resizeImage = await e.File.RequestImageFileAsync(format, 300, 300);
+            var buffer = new byte[resizeImage.Size];
+            await resizeImage.OpenReadStream().ReadAsync(buffer);
+            var imageData = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+            newProduct.Image = imageData; // Set product image data
+        }
+        else { uploadMessage = "Invalid file selected (only JPG file)"; } // Display error message for invalid file format
+    }
+
+    // Method to initialize the component with product data
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id > 0)
+        {
+            var product = await productService.GetProduct(Id); // Fetch product data by ID
+            Message = product!.Message; // Set product message
+            CssClass = product.CssClass; // Set product CSS class
+            if (product.Single != null)
+                newProduct = product!.Single!; // Set product model if product exists
+        }
+    }
+}
